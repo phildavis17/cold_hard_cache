@@ -110,14 +110,16 @@ class JsonCache:
         entry.accessed_timestamp = get_utc_timestamp()
         return entry.value
     
-    def _sorted_keys(self):
-        pass
+    def clear(self) -> None:
+        self.cache = {}
+    
+    def _sorted_keys(self, odering_index: int):
+        return sorted(self.cache.items(), key=lambda x: x[-1][odering_index])
     
     @property
     def least_recently_used_key(self) -> str:
-        lru_timestamp = None
-        for key, cache_tuple in self.cache.items():
-            pass
+        sorted_keys = self._sorted_keys(ACCESSED_TIMESTAMP_INDEX)
+        return sorted_keys[0][0]
 
     @property
     def least_frequently_used_key(self) -> str:
@@ -140,3 +142,4 @@ class JsonCache:
 
     def __len__(self) -> int:
         return len(self.cache)
+    

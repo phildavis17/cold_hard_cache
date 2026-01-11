@@ -77,3 +77,14 @@ def test_json_cache_len(basic_cache):
     assert len(basic_cache) == 1
     basic_cache.store("test", 0)
     assert len(basic_cache) == 2
+
+def test_json_cache_clear(basic_cache, known_key_value_pair):
+    # Given
+    key, _ = known_key_value_pair
+    assert key in basic_cache
+    
+    # When
+    basic_cache.clear()
+    
+    # Then
+    assert key not in basic_cache
