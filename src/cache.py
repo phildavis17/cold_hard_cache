@@ -74,12 +74,20 @@ class CachedCall:
             access_count=count,
         )
 
+class EvictionPolicy(Enum):
+    LRU = 0
+    LFU = 1
+    RANDOM = 2
+    MRU = 3
+    FIFO = 4
 
 class JsonCache:
     def __init__(
         self,
         cache_file_path: Path,
-        cache: dict[str, CachedCall] | None = None
+        cache: dict[str, CachedCall] | None = None,
+        max_size: int = 10,
+        eviction_policy: EvictionPolicy = EvictionPolicy.LFU
     ):
         self.cache_file_path = cache_file_path
         if cache is None:
@@ -123,7 +131,8 @@ class JsonCache:
 
     @property
     def least_frequently_used_key(self) -> str:
-        pass
+        sorted_keys = self._sorted_keys(ACCESS_COUNT_INDEX)
+        return sorted_keys[0][0]
 
     @property
     def random_key(self) -> str:
@@ -131,11 +140,13 @@ class JsonCache:
 
     @property
     def most_recently_used_key(self) -> str:
-        pass
+        sorted_keys = self._sorted_keys(ACCESSED_TIMESTAMP_INDEX)
+        return sorted_keys[0][-1]
 
     @property
     def oldest_key(self) -> str:
-        pass
+        sorted_keys = self._sorted_keys(STORED_TIMESTAMP_INDEX)
+        return sorted_keys[0][0]
     
     def __contains__(self, key: str) -> bool:
         return key in self.cache
