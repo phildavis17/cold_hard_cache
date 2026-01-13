@@ -87,12 +87,17 @@ class JsonCache:
         cache_file_path: Path,
         cache: dict[str, CachedCall] | None = None,
         max_size: int = 10,
+        max_age_seconds: timedelta | None = None,
         eviction_policy: EvictionPolicy = EvictionPolicy.LFU
     ):
         self.cache_file_path = cache_file_path
         if cache is None:
             cache = {}
         self.cache = cache
+        self.max_size = max_size
+        self.max_age_seconds = max_age_seconds
+        self.eviction_policy = eviction_policy
+
     
     def _read_cache_file(self) -> None:
         with open(self.cache_file_path, "r") as cache_file:
@@ -147,6 +152,35 @@ class JsonCache:
     def oldest_key(self) -> str:
         sorted_keys = self._sorted_keys(STORED_TIMESTAMP_INDEX)
         return sorted_keys[0][0]
+    
+    def delete_key(self, key: str) -> None:
+        self.cache.pop(key)
+    
+    def get_next_key_to_evict(self) -> str:
+        eviction_policy_map = {
+            EvictionPolicy.LRU: self.least_recently_used_key,
+            EvictionPolicy.LFU: self.least_frequently_used_key,
+            EvictionPolicy.MRU: self.most_recently_used_key,
+            EvictionPolicy.RANDOM: self.random_key,
+            EvictionPolicy.FIFO: self.oldest_key,
+        }
+        return eviction_policy_map.get(self.eviction_policy)()
+        
+    def cull_to_size(self):
+        if self.max_size <= 0:
+            return
+        while len(self) > self.max_size:
+            next_key = self.get_next_key_to_evict()
+            self.delete_key(next_key)
+    
+    def clear_old_keys(self):
+        if self.max_age_seconds <= 0:
+            return
+        now = get_utc_timestamp()
+        for key, entry in reversed(self._sorted_keys(STORED_TIMESTAMP_INDEX)):
+            if now - entry[STORED_TIMESTAMP_INDEX] > self.max_age_seconds:
+                self.delete_key(key)
+    
     
     def __contains__(self, key: str) -> bool:
         return key in self.cache
