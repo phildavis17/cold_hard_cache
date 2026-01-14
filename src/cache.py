@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from random import choice
-from typing import Any, Protocol
+from typing import Any, Callable
 
 
 TEMP_TEST_FILE_PATH = Path(__file__).parent / "TEMP_CACHE_TEST.json"
@@ -181,10 +181,34 @@ class JsonCache:
             if now - entry[STORED_TIMESTAMP_INDEX] > self.max_age_seconds:
                 self.delete_key(key)
     
-    
     def __contains__(self, key: str) -> bool:
         return key in self.cache
 
     def __len__(self) -> int:
         return len(self.cache)
     
+    def __enter__(self) -> "JsonCache":
+        self._read_cache_file()
+        return self
+
+    def __exit__(self, *args, **kwargs) -> None:
+        self.clear_old_keys()
+        self.cull_to_size()
+        self._write_cache_file()
+
+
+def cache(
+    func: Callable,
+    max_age_seconds: int = 0,
+    max_size: int = 0,
+):
+    def cache_wrapper(*args, **kwargs):
+        cache_folder = Path(__file__).parent
+        cache_file_name = f"{func.__name__}_cache.json"
+        cache_file_path = cache_folder / cache_file_name
+        call_str = f"{args}|{kwargs}"
+        with JsonCache(cache_file_path) as j_cache:
+            if call_str not in j_cache:
+                j_cache.store(call_str, func(*args, **kwargs))
+            return j_cache.retrieve(call_str)
+    return cache_wrapper
