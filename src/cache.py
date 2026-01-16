@@ -91,6 +91,9 @@ class JsonCache:
         eviction_policy: EvictionPolicy = EvictionPolicy.LFU
     ):
         self.cache_file_path = cache_file_path
+        if not Path.exists(self.cache_file_path):
+            with open(self.cache_file_path) as cache_file:
+                json.dump({}, cache_file)
         if cache is None:
             cache = {}
         self.cache = cache

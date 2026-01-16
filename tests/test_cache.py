@@ -3,14 +3,19 @@ from tempfile import NamedTemporaryFile
 from random import randint
 
 import pytest
+import time
+import timeit
 
-from src.cache import JsonCache
+from src.cache import cache, JsonCache
+
+
 
 @pytest.fixture
 def random_key_value_pair():
     key = randint(0, 100)
     value = randint(0, 100)
     return str(key), str(value)
+
 
 @pytest.fixture
 def known_key_value_pair():
@@ -88,3 +93,15 @@ def test_json_cache_clear(basic_cache, known_key_value_pair):
     
     # Then
     assert key not in basic_cache
+
+
+@cache
+def cached_slow_call():
+    time.sleep(1)
+    return "response"
+
+
+def test_cache():
+    first_call = time.perf_counter(cached_slow_call())
+    second_call = time.perf_counter(cached_slow_call())
+    assert second_call < first_call
